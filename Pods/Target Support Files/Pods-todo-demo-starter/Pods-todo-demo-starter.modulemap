@@ -1,0 +1,6 @@
+framework module Pods_todo_demo_starter {
+  umbrella header "Pods-todo-demo-starter-umbrella.h"
+
+  export *
+  module * { export * }
+}

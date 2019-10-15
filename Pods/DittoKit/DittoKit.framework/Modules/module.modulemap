@@ -1,0 +1,17 @@
+framework module DittoKit {
+    umbrella header "DittoKit.h"
+
+    export *
+    module * { export * }
+
+    explicit module DittoFFI {
+        private header "dittoffi.h"
+        link "dittoffi"
+        export *
+    }
+}
+
+module DittoKit.Swift {
+    header "DittoKit-Swift.h"
+    requires objc
+}
