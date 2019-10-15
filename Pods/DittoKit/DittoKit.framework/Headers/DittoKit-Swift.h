@@ -182,6 +182,8 @@ typedef unsigned int swift_uint4  __attribute__((__ext_vector_type__(4)));
 #pragma clang diagnostic ignored "-Watimport-in-framework-header"
 #endif
 @import CoreBluetooth;
+@import Darwin;
+@import Foundation;
 @import ObjectiveC;
 #endif
 
@@ -202,10 +204,55 @@ typedef unsigned int swift_uint4  __attribute__((__ext_vector_type__(4)));
 
 
 
+@class DittoPendingIDSpecificOperation;
+@class DittoPendingCursorOperation;
 
 /// A reference to a collection in a <code>DittoStore</code>.
 SWIFT_CLASS("_TtC8DittoKit15DittoCollection")
 @interface DittoCollection : NSObject
+/// The name of the collection.
+@property (nonatomic, readonly, copy) NSString * _Nonnull name;
+/// Generates a <code>DittoPendingIDSpecificOperation</code> with the provided document ID that can be used to find
+/// the document at a point in time or you can chain a call to <code>observe</code>, <code>observeLocal</code>, or <code>subscribe</code> if
+/// you want to get updates about the document over time. It can also be used to update, remove or evict the document.
+/// \param _id The _id of the document.
+///
+///
+/// throws:
+/// <code>DittoKitError</code>.
+///
+/// returns:
+/// A <code>DittoPendingIDSpecificOperation</code> that you can chain function calls to either get the document immediately or get updates about it over time.
+- (DittoPendingIDSpecificOperation * _Nullable)findByID:(NSString * _Nonnull)_id error:(NSError * _Nullable * _Nullable)error SWIFT_WARN_UNUSED_RESULT;
+/// Generates a <code>DittoPendingCursorOperation</code> with the provided query that can be used to find the
+/// documents matching the query at a point in time or you can chain a call to <code>observe</code>,
+/// <code>observeLocal</code>, or <code>subscribe</code> if you want to get updates about documents matching the query as
+/// they occur. It can also be used to update, remove, or evict documents.
+/// \param query The query to run against the collection.
+///
+///
+/// throws:
+/// <code>DittoKitError</code>.
+///
+/// returns:
+/// A <code>DittoPendingCursorOperation</code> that you can use to chain further query-related function calls.
+- (DittoPendingCursorOperation * _Nullable)find:(NSString * _Nonnull)query error:(NSError * _Nullable * _Nullable)error SWIFT_WARN_UNUSED_RESULT;
+/// Generates a <code>DittoPendingCursorOperation</code> that can be used to find all documents in the collection at
+/// a point in time or you can chain a call to <code>observe</code>, <code>observeLocal</code>, or <code>subscribe</code> if you want to get
+/// updates about documents in the collection over time. It can also be used to update, remove or evict documents.
+///
+/// throws:
+/// <code>DittoKitError</code>
+///
+/// returns:
+/// A <code>DittoPendingCursorOperation</code> that you can use to chain further query-related function calls.
+- (DittoPendingCursorOperation * _Nullable)findAllAndReturnError:(NSError * _Nullable * _Nullable)error SWIFT_WARN_UNUSED_RESULT;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+
+@interface DittoCollection (SWIFT_EXTENSION(DittoKit))
 /// Inserts a new document into the collection and returns its assigned ID.
 /// \param content The new document to insert.
 ///
@@ -218,24 +265,179 @@ SWIFT_CLASS("_TtC8DittoKit15DittoCollection")
 /// returns:
 /// The ID of the inserted document.
 - (NSString * _Nullable)insert:(NSDictionary<NSString *, id> * _Nonnull)content isDefault:(BOOL)isDefault error:(NSError * _Nullable * _Nullable)error;
-- (nonnull instancetype)init SWIFT_UNAVAILABLE;
-+ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
 @end
 
 
 /// Configuration for the database backend that <code>DittoStore</code> uses. Currently this is LMDB.
 SWIFT_CLASS("_TtC8DittoKit13DittoDBConfig")
 @interface DittoDBConfig : NSObject
+/// Initializes a <code>DBConfig</code> object that can be passed to the <code>DittoStore</code> initializer.
+/// \param mapSize The size of the memory map to use. The size should be a multiple of the OS page size. The default is 200 * 1048576 bytes (200MB). The size of the memory map is also the maximum size of the database.
+///
+- (nonnull instancetype)initWithMapSize:(size_t)mapSize OBJC_DESIGNATED_INITIALIZER;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+@class DittoDocumentPath;
+
+/// A document belonging to a <code>DittoCollection</code> with an inner value.
+SWIFT_CLASS("_TtC8DittoKit13DittoDocument")
+@interface DittoDocument : NSObject
+/// The ID of the document.
+@property (nonatomic, readonly, copy) NSString * _Nonnull _id;
+/// The document’s inner value.
+@property (nonatomic, readonly, copy) NSDictionary<NSString *, id> * _Nonnull valueObjC;
+- (DittoDocumentPath * _Nonnull)objectForKeyedSubscript:(NSString * _Nonnull)key SWIFT_WARN_UNUSED_RESULT;
 - (nonnull instancetype)init SWIFT_UNAVAILABLE;
 + (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
 @end
 
 
+@interface DittoDocument (SWIFT_EXTENSION(DittoKit))
+@property (nonatomic, readonly, copy) NSString * _Nonnull description;
+@property (nonatomic, readonly, copy) NSString * _Nonnull debugDescription;
+@end
+
+
+/// Provides an interface to specify a path to a key in a document that you can then call a function on to get
+/// the value at the specified key as a specific type. You obtain a <code>DittoDocumentPath</code> by subscripting a
+/// <code>DittoDocument</code> and you can then further subscript a <code>DittoDocumentPath</code> to further specify the key of
+/// the document that you want to get the value of.
+SWIFT_CLASS("_TtC8DittoKit17DittoDocumentPath")
+@interface DittoDocumentPath : NSObject
+- (DittoDocumentPath * _Nonnull)objectForKeyedSubscript:(NSString * _Nonnull)key SWIFT_WARN_UNUSED_RESULT;
+- (DittoDocumentPath * _Nonnull)objectAtIndexedSubscript:(NSInteger)index SWIFT_WARN_UNUSED_RESULT;
+/// Returns the value at the previously specified key in the document as a <code>String</code> if possible, otherwise the return value will be <code>nil</code>.
+@property (nonatomic, readonly, copy) NSString * _Nullable string;
+/// Returns the value at the previously specified key in the document as a <code>String</code>. If the key was invalid the return value will be an empty string.
+@property (nonatomic, readonly, copy) NSString * _Nonnull stringValue;
+/// Returns the value at the previously specified key in the document as a <code>String</code>. If the key was invalid the return value will be an empty string.
+@property (nonatomic, readonly) BOOL boolValue;
+/// Returns the value at the previously specified key in the document as an <code>Int</code>. If the key was invalid the return value will be 0.
+@property (nonatomic, readonly) NSInteger intValue;
+/// Returns the value at the previously specified key in the document as a <code>Float</code>. If the key was invalid the return value will be 0.
+@property (nonatomic, readonly) float floatValue;
+/// Returns the value at the previously specified key in the document as a <code>Double</code>. If the key was invalid the return value will be 0.
+@property (nonatomic, readonly) double doubleValue;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+
+@interface DittoDocumentPath (SWIFT_EXTENSION(DittoKit))
+/// Returns the value at the previously specified key in the document as an <code>Array<Any></code> if possible, otherwise the return value will be <code>nil</code>.
+@property (nonatomic, readonly, copy) NSArray * _Nullable arrayObjC;
+/// Returns the value at the previously specified key in the document as an <code>Array<Any></code>. If the key was invalid the return value will be an empty array.
+@property (nonatomic, readonly, copy) NSArray * _Nonnull arrayValueObjC;
+/// Returns the value at the previously specified key in the document as a <code>Dictionary<String, Any></code> if possible, otherwise the return value will be <code>nil</code>.
+@property (nonatomic, readonly, copy) NSDictionary<NSString *, id> * _Nullable dictionaryObjC;
+/// Returns the value at the previously specified key in the document as a <code>Dictionary<String, Any></code>. If the key was invalid the return value will be an empty dictionary.
+@property (nonatomic, readonly, copy) NSDictionary<NSString *, id> * _Nonnull dictionaryValueObjC;
+@end
+
+@class NSNumber;
+
+/// An Objective-C compatible equivalent to <code>DittoIdentity</code>.
+/// The identity configurations that you can use when initializing a <code>DittoKit</code> instance are:
+/// <ul>
+///   <li>
+///     development: An identity to be used while in development when you want to control either or both of the app name and the site ID of the peer.
+///   </li>
+///   <li>
+///     production: The identity to use when in production. This accepts a certificate bundle, which includes identity information, as a base 64 encoded string.
+///   </li>
+/// </ul>
+SWIFT_CLASS("_TtC8DittoKit17DittoIdentityObjC")
+@interface DittoIdentityObjC : NSObject
+/// Initialises a default development identity.
+- (nonnull instancetype)init OBJC_DESIGNATED_INITIALIZER;
+/// Initialises a development identity.
+/// \param appName Optional app name that can be used to restrict communication to a specific app.
+///
+/// \param siteID Optional site ID that can be used to explicitly set the site ID as opposed to having a random one generated.
+///
+- (nonnull instancetype)initWithAppName:(NSString * _Nullable)appName siteID:(NSNumber * _Nullable)siteID OBJC_DESIGNATED_INITIALIZER;
+/// Initialises a production identity.
+/// \param certificateConfig A certificate config formatted as a string.
+///
+- (nonnull instancetype)initWithCertificateConfig:(NSString * _Nonnull)certificateConfig OBJC_DESIGNATED_INITIALIZER;
+@end
+
+@protocol DittoKitDelegate;
+enum DittoLogLevel : NSInteger;
+@protocol DittoLogDelegate;
+@class DittoStore;
+
 /// <code>DittoKit</code> is the entry point for accessing Ditto-related functionality.
 SWIFT_CLASS("_TtC8DittoKit8DittoKit")
 @interface DittoKit : NSObject
+/// An optional delegate that will be called with SDK lifecycle information if defined.
+@property (nonatomic, strong) id <DittoKitDelegate> _Nullable delegate;
+/// Represents whether logging is enabled.
+@property (nonatomic) BOOL loggingEnabled;
+/// The minimum log level at which logs will be logged, provided <code>loggingEnabled</code> is <code>true</code>.
+@property (nonatomic) enum DittoLogLevel minimumLogLevel;
+/// Represents whether or not emojis should be used as the log level indicator in the logs.
+@property (nonatomic) BOOL emojiLogLevelHeading;
+/// Optional log delegate that can be implemented to hook into the DittoKit logging.
+@property (nonatomic, strong) id <DittoLogDelegate> _Nullable logDelegate;
+/// The site ID that the instance of <code>DittoKit</code> is using as part of its identity.
+@property (nonatomic, readonly) uint32_t siteID;
+/// Providee’s access to the SDK’s store functionality.
+@property (nonatomic, readonly, strong) DittoStore * _Nonnull store;
+/// Keeps track of whether or not the <code>DittoKit</code> instance has been activated via a successful call to <code>setAccessLicense</code>.
+@property (nonatomic, readonly) BOOL activated;
+/// Activate a <code>DittoKit</code> instance by setting an access license. You cannot interact with <code>DittoKit</code>
+/// before you have activated it.
+/// \param license The license to activate the <code>DittoKit</code> instance with.
+///
+- (void)setAccessLicense:(NSString * _Nonnull)license;
+/// Clears the cached site ID, if one had been cached.
+///
+/// throws:
+/// <code>DittoKitError</code>
+- (BOOL)clearSiteIDAndReturnError:(NSError * _Nullable * _Nullable)error;
 - (nonnull instancetype)init SWIFT_UNAVAILABLE;
 + (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+@class NSSet;
+
+@interface DittoKit (SWIFT_EXTENSION(DittoKit))
+/// Initializes a new <code>DittoKit</code>.
+/// \param identity Provide the identity of the entity that is interacting with DittoKit.
+///
+/// \param directory The directory that will be used to persist DittoKit data.
+///
+/// \param dbConfig Optional configuration to pass to the underlying storage backend.
+///
+///
+/// throws:
+/// <code>DittoKitError</code>
+- (nullable instancetype)initWithIdentity:(DittoIdentityObjC * _Nonnull)identity persistenceDirectory:(NSURL * _Nullable)directory dbConfig:(DittoDBConfig * _Nonnull)dbConfig error:(NSError * _Nullable * _Nullable)error;
+/// Initializes a new <code>DittoKit</code>.
+/// \param identity Optional identity of the entity that is interacting with DittoKit. A default empty development identity will be used if none is provided.
+///
+///
+/// throws:
+/// <code>DittoKitError</code>
+- (nullable instancetype)initWithIdentity:(DittoIdentityObjC * _Nullable)identity error:(NSError * _Nullable * _Nullable)error;
+/// Start a set of transports being used by DittoKit to connect to other devices.
+/// This will start Wi-Fi, Bluetooth LE, and Apple Wireless Direct.
+- (void)start;
+/// Start a set of transports being used by DittoKit to connect to other devices. This has no effect if
+/// a provided transport is already started.
+/// \param transports The set of transports to be started.
+///
+- (void)startWithTransports:(NSSet * _Nonnull)transports;
+/// Stop a set of transports from being used by DittoKit to connect to other devices.
+/// This will stop Wi-Fi, Bluetooth LE, and Apple Wireless Direct.
+- (void)stop;
+/// Stop a set of transports from being used by DittoKit to connect to other devices.
+/// \param transports The set of transports to be stopped.
+///
+- (void)stopWithTransports:(NSSet * _Nonnull)transports;
 @end
 
 enum DittoTransportCondition : uint32_t;
@@ -253,6 +455,144 @@ SWIFT_PROTOCOL("_TtP8DittoKit16DittoKitDelegate_")
 - (void)transportConditionDidChangeWithTransportID:(int64_t)transportID condition:(enum DittoTransportCondition)condition;
 @end
 
+
+/// The type that is returned when calling when calling <code>observe</code> or <code>observeLocal</code> on a
+/// <code>DittoPendingCursorOperation</code> object. It handles the logic for calling the event handler that is provided
+/// to <code>observe</code> or <code>observeLocal</code> calls. <code>DittoLiveQuery</code> objects must be kept in scope for as long as
+/// you with to have your event handler be called when there is an update to a document matching the query you
+/// provide.
+SWIFT_CLASS("_TtC8DittoKit14DittoLiveQuery")
+@interface DittoLiveQuery : NSObject
+/// The query that the live query is based on.
+@property (nonatomic, readonly, copy) NSString * _Nonnull query;
+/// The name of the collection that the live query is based on.
+@property (nonatomic, readonly, copy) NSString * _Nonnull collectionName;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+
+/// Represents the initial event that will be the value of an <code>DittoLiveQueryEventObjC</code> when its <code>type</code>
+/// is <code>error</code> and <code>asErrorEvent</code> is called on it.
+SWIFT_CLASS("_TtC8DittoKit24DittoLiveQueryErrorEvent")
+@interface DittoLiveQueryErrorEvent : NSObject
+/// The error that led to the error event being delivered.
+@property (nonatomic, readonly) NSError * _Nonnull error;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+enum DittoLiveQueryEventTypeObjC : NSInteger;
+@class DittoLiveQueryInitialEvent;
+@class DittoLiveQueryUpdateEvent;
+
+/// An Objective-C compatible equivalent to <code>DittoLiveQueryEvent</code>. It describes the different types of event that
+/// you can receive when dealing with live queries.
+/// <ul>
+///   <li>
+///     initial: The first event that will be delivered and it will only be delivered once.
+///   </li>
+///   <li>
+///     update: This event will be delivered each time the results of the provided query change. It contains
+///     information about the set of documents that previously matched the query before the update,
+///     along with information about what documents have been inserted, deleted, updated, or moved, as
+///     part of the set of matching documents.
+///   </li>
+///   <li>
+///     error: This event will be delivered if there’s an error in relation to a live query.
+///   </li>
+/// </ul>
+/// You can switch on the <code>type</code> and then get the value of the event as the appropriate type using the relevant
+/// function out of: <code>asInitialEvent</code>, <code>asUpdateEvent</code>, and <code>asErrorEvent</code>.
+SWIFT_CLASS("_TtC8DittoKit23DittoLiveQueryEventObjC")
+@interface DittoLiveQueryEventObjC : NSObject
+/// The type of the live query event.
+@property (nonatomic, readonly) enum DittoLiveQueryEventTypeObjC type;
+/// Get the live query event’s value as a <code>DittoLiveQueryInitialEvent</code>, if it is of that type.
+///
+/// returns:
+/// A <code>DittoLiveQueryInitialEvent</code> if the value is of that type, otherwise <code>nil</code>.
+- (DittoLiveQueryInitialEvent * _Nullable)asInitialEvent SWIFT_WARN_UNUSED_RESULT;
+/// Get the live query event’s value as a <code>DittoLiveQueryUpdateEvent</code>, if it is of that type.
+///
+/// returns:
+/// A <code>DittoLiveQueryUpdateEvent</code> if the value is of that type, otherwise <code>nil</code>.
+- (DittoLiveQueryUpdateEvent * _Nullable)asUpdateEvent SWIFT_WARN_UNUSED_RESULT;
+/// Get the live query event’s value as a <code>DittoLiveQueryErrorEvent</code>, if it is of that type.
+///
+/// returns:
+/// A <code>DittoLiveQueryErrorEvent</code> if the value is of that type, otherwise <code>nil</code>.
+- (DittoLiveQueryErrorEvent * _Nullable)asErrorEvent SWIFT_WARN_UNUSED_RESULT;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+/// Describes the different types of event that you can receive when dealing with live queries.
+/// <ul>
+///   <li>
+///     initial: The first event that will be delivered and it will only be delivered once.
+///   </li>
+///   <li>
+///     update: This event will be delivered each time the results of the provided query change. It contains
+///     information about the set of documents that previously matched the query before the update,
+///     along with information about what documents have been inserted, deleted, updated, or moved, as
+///     part of the set of matching documents.
+///   </li>
+///   <li>
+///     error: This event will be delivered if there’s an error in relation to a live query.
+///   </li>
+/// </ul>
+typedef SWIFT_ENUM(NSInteger, DittoLiveQueryEventTypeObjC, closed) {
+  DittoLiveQueryEventTypeObjCInitial = 1,
+  DittoLiveQueryEventTypeObjCUpdate = 2,
+  DittoLiveQueryEventTypeObjCError = 3,
+};
+
+
+/// Represents the initial event that will be the value of an <code>DittoLiveQueryEventObjC</code> when its <code>type</code>
+/// is <code>initial</code> and <code>asInitialEvent</code> is called on it.
+SWIFT_CLASS("_TtC8DittoKit26DittoLiveQueryInitialEvent")
+@interface DittoLiveQueryInitialEvent : NSObject
+- (nonnull instancetype)init OBJC_DESIGNATED_INITIALIZER;
+@end
+
+
+/// Represents how a document has moved in the list of matching documents as part of a live query update event.
+SWIFT_CLASS("_TtC8DittoKit18DittoLiveQueryMove")
+@interface DittoLiveQueryMove : NSObject
+/// The index in the list of documents that the document was previously at before the move.
+@property (nonatomic, readonly) NSInteger from;
+/// The index in the list of documents that the document is now at after the move.
+@property (nonatomic, readonly) NSInteger to;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+
+/// Represents an update event that will be the value of an <code>DittoLiveQueryEventObjC</code> when its <code>type</code>
+/// is <code>update</code> and <code>asUpdateEvent</code> is called on it.
+SWIFT_CLASS("_TtC8DittoKit25DittoLiveQueryUpdateEvent")
+@interface DittoLiveQueryUpdateEvent : NSObject
+/// A list of <code>DittoDocument</code>s representing the previous set of matching documents before the update event.
+@property (nonatomic, readonly, copy) NSArray<DittoDocument *> * _Nonnull oldDocs;
+/// A list of indexes referencing documents that have been inserted as part of the live query update event.
+@property (nonatomic, readonly, copy) NSArray<NSNumber *> * _Nonnull insertions;
+/// A list of indexes referencing documents that have been deleted as part of the live query update event.
+@property (nonatomic, readonly, copy) NSArray<NSNumber *> * _Nonnull deletions;
+/// A list of indexes referencing documents that have been updated as part of the live query update event.
+@property (nonatomic, readonly, copy) NSArray<NSNumber *> * _Nonnull updates;
+/// A list of the moves that have occurred as part of the live query update event.
+@property (nonatomic, readonly, copy) NSArray<DittoLiveQueryMove *> * _Nonnull moves;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+
+SWIFT_PROTOCOL("_TtP8DittoKit16DittoLogDelegate_")
+@protocol DittoLogDelegate
+- (void)didLogWithLogLevel:(enum DittoLogLevel)logLevel object:(id _Nonnull)object filename:(NSString * _Nonnull)filename line:(NSInteger)line column:(NSInteger)column funcName:(NSString * _Nonnull)funcName;
+@end
+
 /// Enum that maps to an appropiate prefix for a log message.
 typedef SWIFT_ENUM(NSInteger, DittoLogLevel, closed) {
 /// Log type verbose
@@ -267,10 +607,495 @@ typedef SWIFT_ENUM(NSInteger, DittoLogLevel, closed) {
   DittoLogLevelError = 4,
 };
 
+@class DittoMutableDocumentPath;
+
+/// This is used as part of update operations for documents. It provides access to updating a document through
+/// a subscript-based API. A subscript operation returns a <code>DittoMutableDocumentPath</code> that you can then use to
+/// chain further subscript operations to in order to access nested values in a document. Once you’ve defined
+/// the path to a key in a document that you’d like to update, by using subscripts, then you can use the
+/// functionality defined on <code>DittoMutableDocumentPath</code> to perform the desired document update(s). Note that
+/// objects of this type should only be used within the scope of the update closure that they are provided in.
+SWIFT_CLASS("_TtC8DittoKit20DittoMutableDocument")
+@interface DittoMutableDocument : NSObject
+/// The ID of the document.
+@property (nonatomic, readonly, copy) NSString * _Nonnull _id;
+/// The document’s inner value.
+@property (nonatomic, readonly, copy) NSDictionary<NSString *, id> * _Nonnull valueObjC;
+- (DittoMutableDocumentPath * _Nonnull)objectForKeyedSubscript:(NSString * _Nonnull)key SWIFT_WARN_UNUSED_RESULT;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+
+/// Provides an interface to specify a path to a key in a document that you can then call various update
+/// functions on. You obtain a <code>DittoMutableDocumentPath</code> by subscripting a <code>DittoMutableDocument</code> and you can
+/// then further subscript a <code>DittoMutbaleDocumentPath</code> to further specify the key of the document that you
+/// want to update.
+SWIFT_CLASS("_TtC8DittoKit24DittoMutableDocumentPath")
+@interface DittoMutableDocumentPath : NSObject
+- (DittoMutableDocumentPath * _Nonnull)objectForKeyedSubscript:(NSString * _Nonnull)key SWIFT_WARN_UNUSED_RESULT;
+- (DittoMutableDocumentPath * _Nonnull)objectAtIndexedSubscript:(NSInteger)index SWIFT_WARN_UNUSED_RESULT;
+/// Set a value at the document’s key defined by the preceding subscripting.
+/// \param value The value to set at the subscripting-defined document key.
+///
+/// \param isDefault Represents whether or not the value should be set as a default value.
+///
+///
+/// throws:
+/// <code>DittoKitError</code>
+- (BOOL)set:(id _Nonnull)value isDefault:(BOOL)isDefault error:(NSError * _Nullable * _Nullable)error;
+/// Remove a value at the document’s key defined by the preceding subscripting.
+///
+/// throws:
+/// <code>DittoKitError</code>
+- (BOOL)removeAndReturnError:(NSError * _Nullable * _Nullable)error;
+/// Replace a value at the document’s key defined by the preceding subscripting with a counter.
+/// \param isDefault Represents whether or not the value is being replaced with a counter that should serve as a default value.
+///
+///
+/// throws:
+/// <code>DittoKitError</code>
+- (BOOL)replaceWithCounterWithIsDefault:(BOOL)isDefault error:(NSError * _Nullable * _Nullable)error;
+/// Increment a counter at the document’s key defined by the preceding subscripting. This will only
+/// succeed if the value at the subscripting-defined key is a counter.
+/// \param amount The amount to increment the counter by. This can be a positive or a negative value.
+///
+///
+/// throws:
+/// <code>DittoKitError</code>
+- (BOOL)incrementWithAmount:(double)amount error:(NSError * _Nullable * _Nullable)error;
+/// Push a value on to the end of an array at the document’s key defined by the preceding subscripting.
+/// This will only succeed if the value at the subscripting-defined key is an array.
+/// \param value The value to push on to the array.
+///
+///
+/// throws:
+/// <code>DittoKitError</code>
+- (BOOL)push:(id _Nonnull)value error:(NSError * _Nullable * _Nullable)error;
+/// Replace the text at the document’s key defined by the preceding subscripting. This will only succeed
+/// if the value at the subscripting-defined key is a string value.
+/// \param index The character index in the existing string that you want the update to start from.
+///
+/// \param length The number of characters that you want to replace as part of the operation.
+///
+/// \param newText The new text to be added to the existing string.
+///
+///
+/// throws:
+/// <code>DittoKitError</code>
+- (BOOL)replaceTextWithIndex:(NSUInteger)index length:(NSUInteger)length newText:(NSString * _Nonnull)newText error:(NSError * _Nullable * _Nullable)error;
+/// Returns the value at the previously specified key in the document as a <code>String</code> if possible, otherwise the return value will be <code>nil</code>.
+@property (nonatomic, readonly, copy) NSString * _Nullable string;
+/// Returns the value at the previously specified key in the document as a <code>String</code>. If the key was invalid the return value will be an empty string.
+@property (nonatomic, readonly, copy) NSString * _Nonnull stringValue;
+/// Returns the value at the previously specified key in the document as a <code>String</code>. If the key was invalid the return value will be an empty string.
+@property (nonatomic, readonly) BOOL boolValue;
+/// Returns the value at the previously specified key in the document as an <code>Int</code>. If the key was invalid the return value will be 0.
+@property (nonatomic, readonly) NSInteger intValue;
+/// Returns the value at the previously specified key in the document as a <code>Float</code>. If the key was invalid the return value will be 0.
+@property (nonatomic, readonly) float floatValue;
+/// Returns the value at the previously specified key in the document as a <code>Double</code>. If the key was invalid the return value will be 0.
+@property (nonatomic, readonly) double doubleValue;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+
+@interface DittoMutableDocumentPath (SWIFT_EXTENSION(DittoKit))
+/// Returns the value at the previously specified key in the document as an <code>Array<Any></code> if possible, otherwise the return value will be <code>nil</code>.
+@property (nonatomic, readonly, copy) NSArray * _Nullable arrayObjC;
+/// Returns the value at the previously specified key in the document as an <code>Array<Any></code>. If the key was invalid the return value will be an empty array.
+@property (nonatomic, readonly, copy) NSArray * _Nonnull arrayValueObjC;
+/// Returns the value at the previously specified key in the document as a <code>Dictionary<String, Any></code> if possible, otherwise the return value will be <code>nil</code>.
+@property (nonatomic, readonly, copy) NSDictionary<NSString *, id> * _Nullable dictionaryObjC;
+/// Returns the value at the previously specified key in the document as a <code>Dictionary<String, Any></code>. If the key was invalid the return value will be an empty dictionary.
+@property (nonatomic, readonly, copy) NSDictionary<NSString *, id> * _Nonnull dictionaryValueObjC;
+/// Set a value at the document’s key defined by the preceding subscripting.
+/// \param value The value to set at the subscripting-defined document key.
+///
+///
+/// throws:
+/// <code>DittoKitError</code>
+- (BOOL)set:(id _Nonnull)value error:(NSError * _Nullable * _Nullable)error;
+/// Replace a value at the document’s key defined by the preceding subscripting with a counter.
+///
+/// throws:
+/// <code>DittoKitError</code>
+- (BOOL)replaceWithCounterAndReturnError:(NSError * _Nullable * _Nullable)error;
+/// Pop a value off the end of an array at the document’s key defined by the preceding subscripting. This
+/// will only succeed if the value at the subscripting-defined key is an array.
+///
+/// throws:
+/// <code>DittoKitError</code>
+///
+/// returns:
+/// The value popped off from the end of the array.
+- (id _Nullable)popAndReturnError:(NSError * _Nullable * _Nullable)error;
+@end
+
+@class DittoSubscription;
+
+/// These objects are returned when using <code>find</code>-like functionality on <code>DittoCollection</code>s. They allow chaining
+/// of further query-related functions to do things like add a limit to the number of documents you want
+/// returned or specify how you want the documents to be sorted and ordered. You can either call <code>exec</code> on the
+/// object to get an array of <code>DittoDocument</code>s as an immediate return value, or you can establish either a
+/// live query or a subscription, which both work over time. A live query, established by calling <code>observe</code>,
+/// will notify you every time there’s an update to a document that matches the query you provided in the
+/// preceding <code>find</code>-like call. A subscription, established by calling <code>subscribe</code>, will act as a signal to
+/// other peers that the device connects to that you would like to receive updates from them about documents
+/// that match the query you provided in the preceding <code>find</code>-like call. Calling <code>observe</code> will generate both a
+/// subscription and a live query at the same time. If you’d like to only observe local changes then you can call
+/// <code>observeLocal</code>. Update and remove functionality is also exposed through this object.
+SWIFT_CLASS("_TtC8DittoKit27DittoPendingCursorOperation")
+@interface DittoPendingCursorOperation : NSObject
+/// Limit the number of documents that get returned when querying a collection for matching documents.
+/// \param limit The maximum number of documents that will be returned.
+///
+///
+/// returns:
+/// A <code>DittoPendingCursorOperation</code> that you can chain further function calls and then either get the matching documents immediately or get updates about them over time.
+- (nonnull instancetype)limit:(NSInteger)limit SWIFT_WARN_UNUSED_RESULT;
+/// Sort the documents that match the query provided in the preceding <code>find</code>-like function call.
+/// \param query The query specifies the logic to be used when sorting the matching documents.
+///
+/// \param isAscending Specify whether you want the sorting order to be ascending or descending.
+///
+///
+/// throws:
+/// <code>DittoKitError</code>
+///
+/// returns:
+/// A <code>DittoPendingCursorOperation</code> that you can chain further function calls and then either get the matching documents immediately or get updates about them over time.
+- (nullable instancetype)sort:(NSString * _Nonnull)query isAscending:(BOOL)isAscending error:(NSError * _Nullable * _Nullable)error SWIFT_WARN_UNUSED_RESULT;
+/// Offset the resulting set of matching documents. This is useful if you aren’t interested in the first
+/// N matching documents for one reason or another. For example, you might already have queried the
+/// collection and obtained the first 20 matching documents and so you might want to run the same query as
+/// you did previously but ignore the first 20 matching documents, and that is where you would use
+/// <code>offset</code>.
+/// \param offset The number of matching documents that you want the eventual resulting set of matching documents to be offset by (and thus not include).
+///
+///
+/// returns:
+/// A <code>DittoPendingCursorOperation</code> that you can chain further function calls and then either get the matching documents immediately or get updates about them over time.
+- (nonnull instancetype)offset:(NSInteger)offset SWIFT_WARN_UNUSED_RESULT;
+/// Enables you to subscribe to changes that occur on a collection. Having a subscription acts as a signal
+/// to others that you are interested in receiving updates when local or remote changes are made to
+/// documents that match the query generated by the chain of operations that precedes the call to
+/// <code>subscribe</code>. The returned <code>DittoSubscription</code> object must be kept in scope for as long as you want to
+/// keep receiving updates.
+///
+/// returns:
+/// A <code>DittoSubscription</code> object that must be kept in scope for as long as you want to keep receiving updates for documents that match the query specified in the preceding chain.
+- (DittoSubscription * _Nonnull)subscribe SWIFT_WARN_UNUSED_RESULT;
+/// Remove all documents that match the query generated by the preceding function chaining.
+///
+/// throws:
+/// <code>DittoKitError</code>
+///
+/// returns:
+/// A list containing the IDs of the documents that were removed.
+- (NSArray<NSString *> * _Nullable)removeAndReturnError:(NSError * _Nullable * _Nullable)error;
+/// Evict all documents that match the query generated by the preceding function chaining.
+///
+/// throws:
+/// <code>DittoKitError</code>
+///
+/// returns:
+/// A list containing the IDs of the documents that were evicted.
+- (NSArray<NSString *> * _Nullable)evictAndReturnError:(NSError * _Nullable * _Nullable)error;
+/// Execute the query generated by the preceding function chaining and return the list of matching
+/// documents.
+///
+/// throws:
+/// <code>DittoKitError</code>
+///
+/// returns:
+/// A list of <code>DittoDocument</code>s matching the query generated by the preceding function chaining.
+- (NSArray<DittoDocument *> * _Nullable)execAndReturnError:(NSError * _Nullable * _Nullable)error SWIFT_WARN_UNUSED_RESULT;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+@class DittoUpdateResultObjC;
+
+@interface DittoPendingCursorOperation (SWIFT_EXTENSION(DittoKit))
+/// Enables you to listen for changes that occur on a collection. The <code>eventHandler</code> closure will be
+/// called when local or remote changes are made to documents that match the query generated by the chain
+/// of operations that precedes the call to <code>observe</code>. The returned <code>DittoLiveQuery</code> object must be
+/// kept in scope for as long as you want the provided <code>eventHandler</code> to be called when an update
+/// occurs.
+/// \param eventHandler A closure that will be called every time there is a transaction committed to the store that involves modifications to documents matching the query in the collection that <code>observe</code> was called on.
+///
+///
+/// throws:
+/// <code>DittoKitError</code>
+///
+/// returns:
+/// A <code>DittoLiveQuery</code> object that must be kept in scope for as long as you want to keep receiving updates.
+- (DittoLiveQuery * _Nullable)observeAndReturnError:(NSError * _Nullable * _Nullable)error eventHandler:(void (^ _Nonnull)(NSArray<DittoDocument *> * _Nonnull, DittoLiveQueryEventObjC * _Nonnull))eventHandler SWIFT_WARN_UNUSED_RESULT;
+/// Enables you to listen for changes that occur on a collection. This won’t subscribe to receive changes
+/// made remotely by others and so it will only fire updates when a local change is made. If you want to
+/// receive remotely performed updates as well then use <code>observe</code> or call <code>subscribe</code> with the
+/// relevant query. The returned <code>DittoLiveQuery</code> object must be kept in scope for as long as you want the
+/// provided <code>eventHandler</code> to be called when an update occurs.
+/// \param eventHandler A closure that will be called every time there is a transaction committed to the store that involves modifications to documents matching the query in the collection that <code>observeLocal</code> was called on.
+///
+///
+/// throws:
+/// <code>DittoKitError</code>
+///
+/// returns:
+/// A <code>DittoLiveQuery</code> object that must be kept in scope for as long as you want to keep receiving updates.
+- (DittoLiveQuery * _Nullable)observeLocalAndReturnError:(NSError * _Nullable * _Nullable)error eventHandler:(void (^ _Nonnull)(NSArray<DittoDocument *> * _Nonnull, DittoLiveQueryEventObjC * _Nonnull))eventHandler SWIFT_WARN_UNUSED_RESULT;
+/// Update documents that match the query generated by the preceding function chaining.
+/// \param closure A closure that gets called with all of the documents matching the query. The documents are <code>DittoMutableDocument</code>s so you can call update-related functions on them.
+///
+///
+/// throws:
+/// <code>DittoKitError</code>
+///
+/// returns:
+/// A dictionary of document IDs to lists of <code>DittoUpdateResultObjC</code> that describes the updates that were performed for each document.
+- (NSDictionary<NSString *, NSArray<DittoUpdateResultObjC *> *> * _Nullable)updateAndReturnError:(NSError * _Nullable * _Nullable)error :(SWIFT_NOESCAPE void (^ _Nonnull)(NSArray<DittoMutableDocument *> * _Nonnull))closure;
+@end
+
+@class NSError;
+@class DittoSingleDocumentLiveQueryEvent;
+@class DittoSingleDocumentLiveQuery;
+
+/// These objects are returned when using <code>findByID</code> functionality on <code>DittoCollection</code>s. You can either call
+/// <code>exec</code> on the  object to get an immediate return value, or you can establish either a live query or a
+/// subscription, which both work over time. A live query, established by calling <code>observe</code>, will notify you
+/// every time there’s an update to the document with the ID you provided in the preceding <code>findByID</code> call. A
+/// subscription, established by calling <code>subscribe</code>, will act as a signal to other peers that you would like
+/// to receive updates from them about the document with the ID you provided in the preceding <code>findByID</code> call.
+/// Calling <code>observe</code> will generate both a subscription and a live query at the same time. If you’d like to only
+/// observe local changes then you can call <code>observeLocal</code>. Update and remove functionality is also exposed
+/// through this object.
+SWIFT_CLASS("_TtC8DittoKit31DittoPendingIDSpecificOperation")
+@interface DittoPendingIDSpecificOperation : NSObject
+/// Enables you to subscribe to changes that occur in relation to a document. Having a subscription acts
+/// as a signal to other peers that you are interested in receiving updates when local or remote changes
+/// are made to the relevant document. The returned <code>DittoSubscription</code> object must be kept in scope for
+/// as long as you want to keep receiving updates.
+///
+/// returns:
+/// A <code>DittoSubscription</code> object that must be kept in scope for as long as you want to keep receiving updates for documents that match the query specified in the preceding chain.
+- (DittoSubscription * _Nonnull)subscribe SWIFT_WARN_UNUSED_RESULT;
+/// Remove the document with the matching ID.
+///
+/// throws:
+/// <code>DittoKitError</code>
+- (BOOL)removeAndReturnError:(NSError * _Nullable * _Nullable)error;
+/// Evict the document with the matching ID.
+///
+/// throws:
+/// <code>DittoKitError</code>
+- (BOOL)evictAndReturnError:(NSError * _Nullable * _Nullable)error;
+/// Execute the find operation to return the document with the matching ID.
+/// \param error This will be populated with an error if an error occurred while performing the find operation.
+///
+///
+/// throws:
+/// <code>DittoKitError</code>
+///
+/// returns:
+/// The <code>DittoDocument</code> with the ID provided in the <code>findByID</code> call or <code>nil</code> if the document was not found.
+- (DittoDocument * _Nullable)execWithError:(NSError * _Nullable * _Nullable)error SWIFT_WARN_UNUSED_RESULT;
+/// Enables you to listen for changes that occur  in relation to a document. The <code>eventHandler</code> closure
+/// will be called when local or remote changes are made to the document referenced by the <code>findByID</code> call
+/// that precedes the call to <code>observe</code>. The returned <code>DittoSingleDocumentLiveQuery</code> object must be
+/// kept in scope for as long as you want the provided <code>eventHandler</code> to be called when an update
+/// occurs.
+/// \param eventHandler A closure that will be called every time there is a transaction committed to the store that involves a modification to the document with the relevant ID in the collection that <code>observe</code> was called on.
+///
+///
+/// throws:
+/// <code>DittoKitError</code>
+///
+/// returns:
+/// A <code>DittoSingleDocumentLiveQuery</code> object that must be kept in scope for as long as you want to keep receiving updates.
+- (DittoSingleDocumentLiveQuery * _Nullable)observeAndReturnError:(NSError * _Nullable * _Nullable)error eventHandler:(void (^ _Nonnull)(DittoSingleDocumentLiveQueryEvent * _Nonnull))eventHandler SWIFT_WARN_UNUSED_RESULT;
+/// Enables you to listen for changes that occur in relation to a document. This won’t subscribe to
+/// receive changes made remotely by others and so it will only fire updates when a local change is made.
+/// If you want to receive remotely performed updates as well then use <code>observe</code> or also call <code>subscribe</code>
+/// separately after another <code>findByID</code> call that references the same document ID. The returned
+/// <code>DittoSingleDocumentLiveQuery</code> object must be kept in scope for as long as you want the
+/// provided <code>eventHandler</code> to be called when an update occurs.
+/// \param eventHandler A closure that will be called every time there is a transaction committed to the store that involves a modification to the document with the relevant ID in the collection that <code>observeLocal</code> was called on.
+///
+///
+/// throws:
+/// <code>DittoKitError</code>
+///
+/// returns:
+/// A <code>DittoSingleDocumentLiveQuery</code> object that must be kept in scope for as long as you want to keep receiving updates.
+- (DittoSingleDocumentLiveQuery * _Nullable)observeLocalAndReturnError:(NSError * _Nullable * _Nullable)error eventHandler:(void (^ _Nonnull)(DittoSingleDocumentLiveQueryEvent * _Nonnull))eventHandler SWIFT_WARN_UNUSED_RESULT;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+
+@interface DittoPendingIDSpecificOperation (SWIFT_EXTENSION(DittoKit))
+/// Update the document with the matching ID.
+/// \param closure A closure that gets called with the document matching the ID. If found, the document is a <code>DittoMutableDocument</code>, so you can call update-related functions on it. If the document is not found then the value provided to the closure will be <code>nil</code>.
+///
+///
+/// throws:
+/// <code>DittoKitError</code>
+///
+/// returns:
+/// A list of <code>DittoUpdateResultObjC</code>s that describes the updates that were performed on the document.
+- (NSArray<DittoUpdateResultObjC *> * _Nullable)updateAndReturnError:(NSError * _Nullable * _Nullable)error :(SWIFT_NOESCAPE void (^ _Nonnull)(DittoMutableDocument * _Nullable))closure;
+@end
+
+@class DittoWriteTransactionPendingIDSpecificOperation;
+@class DittoWriteTransactionPendingCursorOperation;
+
+/// <code>DittoScopedWriteTransaction</code> exposes functionality that allows you to perform multiple operations on the store
+/// within a single write transaction.
+SWIFT_CLASS("_TtC8DittoKit27DittoScopedWriteTransaction")
+@interface DittoScopedWriteTransaction : NSObject
+/// The name of the collection that the scoped write transaction is scoped to.
+@property (nonatomic, readonly, copy) NSString * _Nonnull collectionName;
+/// Generates a <code>DittoWriteTransactionPendingIDSpecificOperation</code> with the provided document ID that can be used to update,
+/// remove, or evict the document.
+/// \param _id The _id of the document.
+///
+///
+/// throws:
+/// <code>DittoKitError</code>.
+///
+/// returns:
+/// A <code>DittoWriteTransactionPendingIDSpecificOperation</code> that you can chain function calls to update, remove, or evict the document.
+- (DittoWriteTransactionPendingIDSpecificOperation * _Nonnull)findByID:(NSString * _Nonnull)_id SWIFT_WARN_UNUSED_RESULT;
+/// Generates a <code>DittoWriteTransactionPendingCursorOperation</code> with the provided query that can be used to update, remove, or
+/// evict documents.
+/// \param query The query to run against the collection.
+///
+///
+/// throws:
+/// <code>DittoKitError</code>.
+///
+/// returns:
+/// A <code>DittoPendingCursorOperation</code> that you can use to chain further query-related function calls to update, remove, or evict the documents.
+- (DittoWriteTransactionPendingCursorOperation * _Nonnull)findWithQuery:(NSString * _Nonnull)query SWIFT_WARN_UNUSED_RESULT;
+/// Generates a <code>DittoWriteTransactionPendingCursorOperation</code> that can be used to update, remove or evict documents.
+///
+/// throws:
+/// <code>DittoKitError</code>
+///
+/// returns:
+/// A <code>DittoPendingCursorOperation</code> that you can use to chain further query-related function calls to update, remove, or evict the documents.
+- (DittoWriteTransactionPendingCursorOperation * _Nonnull)findAll SWIFT_WARN_UNUSED_RESULT;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+
+@interface DittoScopedWriteTransaction (SWIFT_EXTENSION(DittoKit))
+/// Insert a document into the scoped collection.
+/// \param document The document to insert.
+///
+/// \param isDefault Represents whether or not the data being inserted should be treated as default data or not.
+///
+///
+/// throws:
+/// <code>DittoKitError</code>
+///
+/// returns:
+/// The ID of the inserted document.
+- (NSString * _Nullable)insert:(NSDictionary<NSString *, id> * _Nonnull)document isDefault:(BOOL)isDefault error:(NSError * _Nullable * _Nullable)error;
+@end
+
+
+/// The type that is returned when calling <code>observe</code> or <code>observeLocal</code> on a
+/// <code>DittoPendingIDSpecificOperation</code> object. It handles the logic for calling the event handler that is
+/// provided to <code>observe</code> or <code>observeLocal</code> calls. <code>DittoSingleDocumentLiveQuery</code> objects must be kept
+/// in scope for as long as you with to have your event handler be called when there is an update to the
+/// referenced document.
+SWIFT_CLASS("_TtC8DittoKit28DittoSingleDocumentLiveQuery")
+@interface DittoSingleDocumentLiveQuery : NSObject
+@property (nonatomic, readonly, copy) NSString * _Nonnull query;
+@property (nonatomic, readonly, copy) NSString * _Nonnull collectionName;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+
+/// Represents a change to a document by providing a value representing the document’s old state and a value
+/// representing the document’s new state. If it is the first time that one of these events is delivered for
+/// a <code>DittoSingleDocumentLiveQuery</code> then the <code>isInitial</code> value will be <code>true</code> and the <code>newDocument</code> value
+/// will be populated, if there existed a document with the relevant ID. If there is no matching document
+/// found then both <code>oldDocument</code> and <code>newDocument</code> will be <code>nil</code>. If the document exists and is removed at a
+/// later date then an event will be delivered where <code>oldDocument</code> will be the most recent version of the
+/// document and <code>newDocument</code> will be <code>nil</code>. Similarly, if there was no document with the relevant ID and a
+/// document with the ID is later added then an event will be delivered where <code>oldDocument</code> is <code>nil</code> and
+/// <code>newDocument</code> will be the document as it was just inserted.
+SWIFT_CLASS("_TtC8DittoKit33DittoSingleDocumentLiveQueryEvent")
+@interface DittoSingleDocumentLiveQueryEvent : NSObject
+/// States whether or not the event is the initial event delivered as part of an <code>observe</code> or <code>observeLocal</code> call.
+@property (nonatomic, readonly) BOOL isInitial;
+/// The old representation of the document with the relveant document ID.
+@property (nonatomic, readonly, strong) DittoDocument * _Nullable oldDocument;
+/// The new representation of the document with the relveant document ID.
+@property (nonatomic, readonly, strong) DittoDocument * _Nullable newDocument;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
 
 /// <code>DittoStore</code> provides access to <code>DittoCollection</code>s and a write transaction API.
 SWIFT_CLASS("_TtC8DittoKit10DittoStore")
 @interface DittoStore : NSObject
+/// Returns a <code>DittoCollection</code> with the provided name.
+/// \param name The name of the collection.
+///
+///
+/// throws:
+/// <code>DittoKitError</code> if there is a storage backend error.
+///
+/// returns:
+/// A <code>DittoCollection</code>.
+- (DittoCollection * _Nullable)collectionWithName:(NSString * _Nonnull)name error:(NSError * _Nullable * _Nullable)error SWIFT_WARN_UNUSED_RESULT;
+/// Returns a list of the names of collections in the store.
+///
+/// throws:
+/// <code>DittoKitError</code> if there is a storage backend error.
+///
+/// returns:
+/// A list of collection names found in the store.
+- (NSArray<NSString *> * _Nullable)collectionNamesAndReturnError:(NSError * _Nullable * _Nullable)error SWIFT_WARN_UNUSED_RESULT;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+@class DittoWriteTransaction;
+@class DittoWriteTransactionResultObjC;
+
+@interface DittoStore (SWIFT_EXTENSION(DittoKit))
+/// Allows you to group multiple operations together that affect multiple documents, potentially across multiple collections.
+/// \param block A closure that provides access to a write transaction object that can be used to perform operations on the store.
+///
+///
+/// throws:
+/// <code>DittoKitError</code> if there is a storage backend error.
+///
+/// returns:
+/// A list of <code>DittoWriteTransactionResult</code>s. There is a result for each operation performed as part of the write transaction.
+- (NSArray<DittoWriteTransactionResultObjC *> * _Nullable)writeAndReturnError:(NSError * _Nullable * _Nullable)error :(SWIFT_NOESCAPE void (^ _Nonnull)(DittoWriteTransaction * _Nonnull))block SWIFT_WARN_UNUSED_RESULT;
+@end
+
+
+/// While <code>DittoSubscription</code> objects remain in scope they ensure that documents in the collection specified
+/// and that match the query provided will try to be kept up-to-date with the latest changes from remote
+/// peers.
+SWIFT_CLASS("_TtC8DittoKit17DittoSubscription")
+@interface DittoSubscription : NSObject
+/// The query that the subscription is based on.
+@property (nonatomic, readonly, copy) NSString * _Nonnull query;
+/// The name of the collection that the subscription is based on.
+@property (nonatomic, readonly, copy) NSString * _Nonnull collectionName;
 - (nonnull instancetype)init SWIFT_UNAVAILABLE;
 + (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
 @end
@@ -287,6 +1112,30 @@ typedef SWIFT_ENUM(uint32_t, DittoTransportCondition, closed) {
   DittoTransportConditionBleDisabled = 8,
   DittoTransportConditionNoBleHardware = 9,
 };
+
+@class DittoTransportSnapshot;
+
+SWIFT_CLASS("_TtC8DittoKit25DittoTransportDiagnostics")
+@interface DittoTransportDiagnostics : NSObject
+@property (nonatomic, readonly, copy) NSArray<DittoTransportSnapshot *> * _Nonnull transports;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+
+SWIFT_CLASS("_TtC8DittoKit22DittoTransportSnapshot")
+@interface DittoTransportSnapshot : NSObject
+@property (nonatomic, readonly) int64_t id;
+@property (nonatomic, readonly, copy) NSString * _Nonnull transportType;
+@property (nonatomic, readonly, copy) NSString * _Nonnull state;
+@property (nonatomic, readonly, copy) NSString * _Nonnull condition;
+@property (nonatomic, readonly, copy) NSArray<NSNumber *> * _Nonnull connecting;
+@property (nonatomic, readonly, copy) NSArray<NSNumber *> * _Nonnull connected;
+@property (nonatomic, readonly, copy) NSArray<NSNumber *> * _Nonnull disconnecting;
+@property (nonatomic, readonly, copy) NSArray<NSNumber *> * _Nonnull disconnected;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
 
 /// This enumeration lists the transports that DittoKit can use to connect to other devices.
 /// <ul>
@@ -305,6 +1154,503 @@ typedef SWIFT_ENUM(NSInteger, DittoTransports, closed) {
   DittoTransportsWifi = 1,
   DittoTransportsAwdl = 2,
 };
+
+
+/// Represents the update result that will be the value of a <code>DittoUpdateResultObjC</code> when its <code>type</code>
+/// is <code>incremented</code> and <code>asIncremented</code> is called on it.
+SWIFT_CLASS("_TtC8DittoKit28DittoUpdateResultIncremented")
+@interface DittoUpdateResultIncremented : NSObject
+/// The ID of the document that was updated.
+@property (nonatomic, readonly, copy) NSString * _Nonnull docID;
+/// The path to the key in the document that was updated.
+@property (nonatomic, readonly, copy) NSString * _Nonnull path;
+/// The amount that the counter was incremented by.
+@property (nonatomic, readonly) double amount;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+enum DittoUpdateResultTypeObjC : NSInteger;
+@class DittoUpdateResultSet;
+@class DittoUpdateResultRemoved;
+@class DittoUpdateResultReplacedWithCounter;
+@class DittoUpdateResultReplacedText;
+@class DittoUpdateResultPushed;
+@class DittoUpdateResultPopped;
+
+/// An Objective-C compatible equivalent to <code>DittoUpdateResult</code>. Describes the result of an update
+/// operation performed on a <code>DittoMutableDocument</code>.
+/// <ul>
+///   <li>
+///     set: Describes the <code>set</code> update that was performed.
+///   </li>
+///   <li>
+///     removed: Describes the <code>remove</code> update that was performed.
+///   </li>
+///   <li>
+///     replacedWithCounter: Describes the <code>replaceWithCounter</code> update that was performed.
+///   </li>
+///   <li>
+///     incremented: Describes the <code>increment</code> update that was performed.
+///   </li>
+///   <li>
+///     replacedText: Describes the <code>replaceText</code> update that was performed.
+///   </li>
+///   <li>
+///     pushed: Describes the <code>push</code> update that was performed.
+///   </li>
+///   <li>
+///     popped: Describes the <code>pop</code> update that was performed.
+///   </li>
+/// </ul>
+/// You can switch on the <code>type</code> and then get the value of the result as the appropriate type using the relevant
+/// function out of:
+/// <ul>
+///   <li>
+///     <code>asSet</code>
+///   </li>
+///   <li>
+///     <code>asRemoved</code>
+///   </li>
+///   <li>
+///     <code>asReplacedWithCounter</code>
+///   </li>
+///   <li>
+///     <code>asIncremented</code>
+///   </li>
+///   <li>
+///     <code>asReplacedText</code>
+///   </li>
+///   <li>
+///     <code>asPushed</code>
+///   </li>
+///   <li>
+///     <code>asPopped</code>
+///   </li>
+/// </ul>
+SWIFT_CLASS("_TtC8DittoKit21DittoUpdateResultObjC")
+@interface DittoUpdateResultObjC : NSObject
+/// The type of the update result.
+@property (nonatomic, readonly) enum DittoUpdateResultTypeObjC type;
+/// Get the update result’s value as a <code>DittoUpdateResultSet</code>, if it is of that type.
+///
+/// returns:
+/// A <code>DittoUpdateResultSet</code> if the value is of that type, otherwise <code>nil</code>.
+- (DittoUpdateResultSet * _Nullable)asSet SWIFT_WARN_UNUSED_RESULT;
+/// Get the update result’s value as a <code>DittoUpdateResultRemoved</code>, if it is of that type.
+///
+/// returns:
+/// A <code>DittoUpdateResultRemoved</code> if the value is of that type, otherwise <code>nil</code>.
+- (DittoUpdateResultRemoved * _Nullable)asRemoved SWIFT_WARN_UNUSED_RESULT;
+/// Get the update result’s value as a <code>DittoUpdateResultReplacedWithCounter</code>, if it is of that type.
+///
+/// returns:
+/// A <code>DittoUpdateResultReplacedWithCounter</code> if the value is of that type, otherwise <code>nil</code>.
+- (DittoUpdateResultReplacedWithCounter * _Nullable)asReplacedWithCounter SWIFT_WARN_UNUSED_RESULT;
+/// Get the update result’s value as a <code>DittoUpdateResultIncremented</code>, if it is of that type.
+///
+/// returns:
+/// A <code>DittoUpdateResultIncremented</code> if the value is of that type, otherwise <code>nil</code>.
+- (DittoUpdateResultIncremented * _Nullable)asIncremented SWIFT_WARN_UNUSED_RESULT;
+/// Get the update result’s value as a <code>DittoUpdateResultReplacedText</code>, if it is of that type.
+///
+/// returns:
+/// A <code>DittoUpdateResultReplacedText</code> if the value is of that type, otherwise <code>nil</code>.
+- (DittoUpdateResultReplacedText * _Nullable)asReplacedText SWIFT_WARN_UNUSED_RESULT;
+/// Get the update result’s value as a <code>DittoUpdateResultPushed</code>, if it is of that type.
+///
+/// returns:
+/// A <code>DittoUpdateResultPushed</code> if the value is of that type, otherwise <code>nil</code>.
+- (DittoUpdateResultPushed * _Nullable)asPushed SWIFT_WARN_UNUSED_RESULT;
+/// Get the update result’s value as a <code>DittoUpdateResultPopped</code>, if it is of that type.
+///
+/// returns:
+/// A <code>DittoUpdateResultPopped</code> if the value is of that type, otherwise <code>nil</code>.
+- (DittoUpdateResultPopped * _Nullable)asPopped SWIFT_WARN_UNUSED_RESULT;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+
+/// Represents the update result that will be the value of a <code>DittoUpdateResultObjC</code> when its <code>type</code>
+/// is <code>popped</code> and <code>asPopped</code> is called on it.
+SWIFT_CLASS("_TtC8DittoKit23DittoUpdateResultPopped")
+@interface DittoUpdateResultPopped : NSObject
+/// The ID of the document that was updated.
+@property (nonatomic, readonly, copy) NSString * _Nonnull docID;
+/// The path to the key in the document that was updated.
+@property (nonatomic, readonly, copy) NSString * _Nonnull path;
+/// The value the was popped from the path in the doucment.
+@property (nonatomic, readonly) id _Nonnull value;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+
+/// Represents the update result that will be the value of a <code>DittoUpdateResultObjC</code> when its <code>type</code>
+/// is <code>pushed</code> and <code>asPushed</code> is called on it.
+SWIFT_CLASS("_TtC8DittoKit23DittoUpdateResultPushed")
+@interface DittoUpdateResultPushed : NSObject
+/// The ID of the document that was updated.
+@property (nonatomic, readonly, copy) NSString * _Nonnull docID;
+/// The path to the key in the document that was updated.
+@property (nonatomic, readonly, copy) NSString * _Nonnull path;
+/// The value the was pushed at the path in the doucment.
+@property (nonatomic, readonly) id _Nonnull value;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+
+/// Represents the update result that will be the value of a <code>DittoUpdateResultObjC</code> when its <code>type</code>
+/// is <code>removed</code> and <code>asRemoved</code> is called on it.
+SWIFT_CLASS("_TtC8DittoKit24DittoUpdateResultRemoved")
+@interface DittoUpdateResultRemoved : NSObject
+/// The ID of the document that was updated.
+@property (nonatomic, readonly, copy) NSString * _Nonnull docID;
+/// The path to the key in the document that was updated.
+@property (nonatomic, readonly, copy) NSString * _Nonnull path;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+
+/// Represents the update result that will be the value of a <code>DittoUpdateResultObjC</code> when its <code>type</code>
+/// is <code>replacedText</code> and <code>asReplacedText</code> is called on it.
+SWIFT_CLASS("_TtC8DittoKit29DittoUpdateResultReplacedText")
+@interface DittoUpdateResultReplacedText : NSObject
+/// The ID of the document that was updated.
+@property (nonatomic, readonly, copy) NSString * _Nonnull docID;
+/// The path to the key in the document that was updated.
+@property (nonatomic, readonly, copy) NSString * _Nonnull path;
+/// The index in the existing text that the relevant changes should be made from.
+@property (nonatomic, readonly) NSUInteger index;
+/// The length of the existing text, starting from the provided index, that should be removed.
+@property (nonatomic, readonly) NSUInteger length;
+/// The new text that was inserted at the provided index.
+@property (nonatomic, readonly, copy) NSString * _Nonnull newText;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+
+/// Represents the update result that will be the value of a <code>DittoUpdateResultObjC</code> when its <code>type</code>
+/// is <code>replacedWithCounter</code> and <code>asReplacedWithCounter</code> is called on it.
+SWIFT_CLASS("_TtC8DittoKit36DittoUpdateResultReplacedWithCounter")
+@interface DittoUpdateResultReplacedWithCounter : NSObject
+/// The ID of the document that was updated.
+@property (nonatomic, readonly, copy) NSString * _Nonnull docID;
+/// The path to the key in the document that was updated.
+@property (nonatomic, readonly, copy) NSString * _Nonnull path;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+
+/// Represents the update result that will be the value of a <code>DittoUpdateResultObjC</code> when its <code>type</code>
+/// is <code>set</code> and <code>asSet</code> is called on it.
+SWIFT_CLASS("_TtC8DittoKit20DittoUpdateResultSet")
+@interface DittoUpdateResultSet : NSObject
+/// The ID of the document that was updated.
+@property (nonatomic, readonly, copy) NSString * _Nonnull docID;
+/// The path to the key in the document that was updated.
+@property (nonatomic, readonly, copy) NSString * _Nonnull path;
+/// The value the was set at the path in the doucment.
+@property (nonatomic, readonly) id _Nonnull value;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+/// Describes the result of an update operation performed on a <code>DittoMutableDocument</code>.
+/// <ul>
+///   <li>
+///     set: Describes the <code>set</code> update that was performed.
+///   </li>
+///   <li>
+///     removed: Describes the <code>remove</code> update that was performed.
+///   </li>
+///   <li>
+///     replacedWithCounter: Describes the <code>replaceWithCounter</code> update that was performed.
+///   </li>
+///   <li>
+///     incremented: Describes the <code>increment</code> update that was performed.
+///   </li>
+///   <li>
+///     replacedText: Describes the <code>replaceText</code> update that was performed.
+///   </li>
+///   <li>
+///     pushed: Describes the <code>push</code> update that was performed.
+///   </li>
+///   <li>
+///     popped: Describes the <code>pop</code> update that was performed.
+///   </li>
+/// </ul>
+typedef SWIFT_ENUM(NSInteger, DittoUpdateResultTypeObjC, closed) {
+  DittoUpdateResultTypeObjCSet = 1,
+  DittoUpdateResultTypeObjCRemoved = 2,
+  DittoUpdateResultTypeObjCReplacedWithCounter = 3,
+  DittoUpdateResultTypeObjCIncremented = 4,
+  DittoUpdateResultTypeObjCReplacedText = 5,
+  DittoUpdateResultTypeObjCPushed = 6,
+  DittoUpdateResultTypeObjCPopped = 7,
+};
+
+
+/// <code>DittoWriteTransaction</code> exposes functionality that allows you to perform multiple operations on the store
+/// within a single write transaction. You must use the <code>scoped</code> function to get collection-scoped access to the
+/// write transaction object, which will then allow you to perform insert, update, remove or evict operations using the
+/// write transaction.
+SWIFT_CLASS("_TtC8DittoKit21DittoWriteTransaction")
+@interface DittoWriteTransaction : NSObject
+/// Creates a <code>DittoScopedWriteTransaction</code> object that will ensure that operations called on it are all in the context of the collection
+/// name provided to this function. You can create many <code>DittoScopedWriteTransaction</code> objects per <code>DittoWriteTransaction</code>
+/// object.
+/// \param collectionName The name of the collection that the write transaction object should be scoped to.
+///
+- (DittoScopedWriteTransaction * _Nonnull)scopedToCollectionNamed:(NSString * _Nonnull)collectionName SWIFT_WARN_UNUSED_RESULT;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+
+/// These objects are returned when using <code>find</code> and <code>findAll</code> functionality on <code>DittoScopedWriteTransaction</code>s.
+/// You can use them to perform updates on documents and remove or evcit documents.
+SWIFT_CLASS("_TtC8DittoKit43DittoWriteTransactionPendingCursorOperation")
+@interface DittoWriteTransactionPendingCursorOperation : NSObject
+/// Limit the number of documents that get returned when querying a collection for matching documents.
+/// \param limit The maximum number of documents that will be returned.
+///
+///
+/// returns:
+/// A <code>DittoPendingCursorOperation</code> that you can chain further function calls and then either get the matching documents immediately or get updates about them over time.
+- (nonnull instancetype)limit:(NSInteger)limit SWIFT_WARN_UNUSED_RESULT;
+/// Sort the documents that match the query provided in the preceding <code>find</code>-like function call.
+/// \param query The query specifies the logic to be used when sorting the matching documents.
+///
+/// \param isAscending Specify whether you want the sorting order to be ascending or descending.
+///
+///
+/// throws:
+/// <code>DittoKitError</code>
+///
+/// returns:
+/// A <code>DittoPendingCursorOperation</code> that you can chain further function calls and then either get the matching documents immediately or get updates about them over time.
+- (nullable instancetype)sort:(NSString * _Nonnull)query isAscending:(BOOL)isAscending error:(NSError * _Nullable * _Nullable)error SWIFT_WARN_UNUSED_RESULT;
+/// Offset the resulting set of matching documents. This is useful if you aren’t interested in the first
+/// N matching documents for one reason or another. For example, you might already have queried the
+/// collection and obtained the first 20 matching documents and so you might want to run the same query as
+/// you did previously but ignore the first 20 matching documents, and that is where you would use
+/// <code>offset</code>.
+/// \param offset The number of matching documents that you want the eventual resulting set of matching documents to be offset by (and thus not include).
+///
+///
+/// returns:
+/// A <code>DittoPendingCursorOperation</code> that you can chain further function calls and then either get the matching documents immediately or get updates about them over time.
+- (nonnull instancetype)offset:(NSInteger)offset SWIFT_WARN_UNUSED_RESULT;
+/// Remove all documents that match the query generated by the preceding function chaining.
+///
+/// throws:
+/// <code>DittoKitError</code>
+///
+/// returns:
+/// A list containing the IDs of the documents that were removed.
+- (NSArray<NSString *> * _Nullable)removeAndReturnError:(NSError * _Nullable * _Nullable)error;
+/// Evict all documents that match the query generated by the preceding function chaining.
+///
+/// throws:
+/// <code>DittoKitError</code>
+///
+/// returns:
+/// A list containing the IDs of the documents that were evicted.
+- (NSArray<NSString *> * _Nullable)evictAndReturnError:(NSError * _Nullable * _Nullable)error;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+
+@interface DittoWriteTransactionPendingCursorOperation (SWIFT_EXTENSION(DittoKit))
+/// Update documents that match the query generated by the preceding function chaining.
+/// \param closure A closure that gets called with all of the documents matching the query. The documents are <code>DittoMutableDocument</code>s so you can call update-related functions on them.
+///
+///
+/// throws:
+/// <code>DittoKitError</code>
+///
+/// returns:
+/// A dictionary of document IDs to lists of <code>DittoUpdateResultObjC</code> that describes the updates that were performed for each document.
+- (NSDictionary<NSString *, NSArray<DittoUpdateResultObjC *> *> * _Nullable)updateAndReturnError:(NSError * _Nullable * _Nullable)error :(SWIFT_NOESCAPE void (^ _Nonnull)(NSArray<DittoMutableDocument *> * _Nonnull))closure;
+@end
+
+
+/// These objects are returned when using <code>findByID</code> functionality on <code>DittoScopedWriteTransaction</code>s.
+/// You can use them to perform updates on a document and remove or evcit a document.
+SWIFT_CLASS("_TtC8DittoKit47DittoWriteTransactionPendingIDSpecificOperation")
+@interface DittoWriteTransactionPendingIDSpecificOperation : NSObject
+/// Remove the document with the matching ID.
+///
+/// throws:
+/// <code>DittoKitError</code>
+- (BOOL)removeAndReturnError:(NSError * _Nullable * _Nullable)error;
+/// Evict the document with the matching ID.
+///
+/// throws:
+/// <code>DittoKitError</code>
+- (BOOL)evictAndReturnError:(NSError * _Nullable * _Nullable)error;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+
+@interface DittoWriteTransactionPendingIDSpecificOperation (SWIFT_EXTENSION(DittoKit))
+/// Update the document with the matching ID.
+/// \param closure A closure that gets called with the document matching the ID. If found, the document is a <code>DittoMutableDocument</code>, so you can call update-related functions on it. If the document is not found then the value provided to the closure will be <code>nil</code>.
+///
+///
+/// throws:
+/// <code>DittoKitError</code>
+///
+/// returns:
+/// A list of <code>DittoUpdateResultObjC</code>s that describes the updates that were performed on the document.
+- (NSArray<DittoUpdateResultObjC *> * _Nullable)updateAndReturnError:(NSError * _Nullable * _Nullable)error :(SWIFT_NOESCAPE void (^ _Nonnull)(DittoMutableDocument * _Nullable))closure;
+@end
+
+
+/// Represents the write transaction result that will be the value of a <code>DittoWriteTransactionResultObjC</code> when its <code>type</code>
+/// is <code>evicted</code> and <code>asEvicted</code> is called on it.
+SWIFT_CLASS("_TtC8DittoKit34DittoWriteTransactionResultEvicted")
+@interface DittoWriteTransactionResultEvicted : NSObject
+/// The ID of the document that was updated.
+@property (nonatomic, readonly, copy) NSString * _Nonnull docID;
+/// The name of the collection that the document was inserted into.
+@property (nonatomic, readonly, copy) NSString * _Nonnull collectionName;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+
+/// Represents the write transaction result that will be the value of a <code>DittoWriteTransactionResultObjC</code> when its <code>type</code>
+/// is <code>inserted</code> and <code>asInserted</code> is called on it.
+SWIFT_CLASS("_TtC8DittoKit35DittoWriteTransactionResultInserted")
+@interface DittoWriteTransactionResultInserted : NSObject
+/// The ID of the document that was updated.
+@property (nonatomic, readonly, copy) NSString * _Nonnull docID;
+/// The name of the collection that the document was inserted into.
+@property (nonatomic, readonly, copy) NSString * _Nonnull collectionName;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+enum DittoWriteTransactionResultTypeObjC : NSInteger;
+@class DittoWriteTransactionResultUpdated;
+@class DittoWriteTransactionResultRemoved;
+
+/// An Objective-C compatible equivalent to <code>DittoWriteTransactionResult</code>. Describes the result of a write transaction
+/// operation.
+/// <ul>
+///   <li>
+///     inserted: Describes a document that has been inserted, referencing its ID and the collection it was inserted into.
+///   </li>
+///   <li>
+///     updated: Describes a document that has been updated, referencing its ID and the collection it belongs to.
+///   </li>
+///   <li>
+///     evicted: Describes a document that has been evicted, referencing its ID and the collection it belonged to.
+///   </li>
+///   <li>
+///     removed: Describes a document that has been removed, referencing its ID and the collection it belonged to.
+///   </li>
+/// </ul>
+/// You can switch on the <code>type</code> and then get the value of the result as the appropriate type using the relevant
+/// function out of:
+/// <ul>
+///   <li>
+///     <code>asInserted</code>
+///   </li>
+///   <li>
+///     <code>asUpdated</code>
+///   </li>
+///   <li>
+///     <code>asEvicted</code>
+///   </li>
+///   <li>
+///     <code>asRemoved</code>
+///   </li>
+/// </ul>
+SWIFT_CLASS("_TtC8DittoKit31DittoWriteTransactionResultObjC")
+@interface DittoWriteTransactionResultObjC : NSObject
+/// The type of the update result.
+@property (nonatomic, readonly) enum DittoWriteTransactionResultTypeObjC type;
+/// Get the update result’s value as a <code>DittoWriteTransactionResultInserted</code>, if it is of that type.
+///
+/// returns:
+/// A <code>DittoWriteTransactionResultInserted</code> if the value is of that type, otherwise <code>nil</code>.
+- (DittoWriteTransactionResultInserted * _Nullable)asInserted SWIFT_WARN_UNUSED_RESULT;
+/// Get the update result’s value as a <code>DittoWriteTransactionResultUpdated</code>, if it is of that type.
+///
+/// returns:
+/// A <code>DittoWriteTransactionResultUpdated</code> if the value is of that type, otherwise <code>nil</code>.
+- (DittoWriteTransactionResultUpdated * _Nullable)asUpdated SWIFT_WARN_UNUSED_RESULT;
+/// Get the update result’s value as a <code>DittoWriteTransactionResultEvicted</code>, if it is of that type.
+///
+/// returns:
+/// A <code>DittoWriteTransactionResultEvicted</code> if the value is of that type, otherwise <code>nil</code>.
+- (DittoWriteTransactionResultEvicted * _Nullable)asEvicted SWIFT_WARN_UNUSED_RESULT;
+/// Get the update result’s value as a <code>DittoWriteTransactionResultRemoved</code>, if it is of that type.
+///
+/// returns:
+/// A <code>DittoWriteTransactionResultRemoved</code> if the value is of that type, otherwise <code>nil</code>.
+- (DittoWriteTransactionResultRemoved * _Nullable)asRemoved SWIFT_WARN_UNUSED_RESULT;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+
+/// Represents the write transaction result that will be the value of a <code>DittoWriteTransactionResultObjC</code> when its <code>type</code>
+/// is <code>removed</code> and <code>asRemoved</code> is called on it.
+SWIFT_CLASS("_TtC8DittoKit34DittoWriteTransactionResultRemoved")
+@interface DittoWriteTransactionResultRemoved : NSObject
+/// The ID of the document that was updated.
+@property (nonatomic, readonly, copy) NSString * _Nonnull docID;
+/// The name of the collection that the document was inserted into.
+@property (nonatomic, readonly, copy) NSString * _Nonnull collectionName;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
+
+/// Describes the result of a write transaction operation.
+/// <ul>
+///   <li>
+///     inserted: Describes a document that has been inserted, referencing its ID and the collection it was inserted into.
+///   </li>
+///   <li>
+///     updated: Describes a document that has been updated, referencing its ID and the collection it belongs to.
+///   </li>
+///   <li>
+///     evicted: Describes a document that has been evicted, referencing its ID and the collection it belonged to.
+///   </li>
+///   <li>
+///     removed: Describes a document that has been removed, referencing its ID and the collection it belonged to.
+///   </li>
+/// </ul>
+typedef SWIFT_ENUM(NSInteger, DittoWriteTransactionResultTypeObjC, closed) {
+  DittoWriteTransactionResultTypeObjCInserted = 1,
+  DittoWriteTransactionResultTypeObjCUpdated = 2,
+  DittoWriteTransactionResultTypeObjCEvicted = 3,
+  DittoWriteTransactionResultTypeObjCRemoved = 4,
+};
+
+
+/// Represents the write transaction result that will be the value of a <code>DittoWriteTransactionResultObjC</code> when its <code>type</code>
+/// is <code>updated</code> and <code>asUpdated</code> is called on it.
+SWIFT_CLASS("_TtC8DittoKit34DittoWriteTransactionResultUpdated")
+@interface DittoWriteTransactionResultUpdated : NSObject
+/// The ID of the document that was updated.
+@property (nonatomic, readonly, copy) NSString * _Nonnull docID;
+/// The name of the collection that the document was inserted into.
+@property (nonatomic, readonly, copy) NSString * _Nonnull collectionName;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE;
++ (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
+@end
 
 #if __has_attribute(external_source_symbol)
 # pragma clang attribute pop

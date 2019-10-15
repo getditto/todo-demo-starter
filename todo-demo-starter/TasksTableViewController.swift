@@ -12,13 +12,14 @@ import DittoKit
 class TasksTableViewController: UITableViewController {
     var ditto: DittoKit!
     var collection: DittoCollection!
+    var liveQuery: DittoLiveQuery?
     
     // We need to format the task creation date into a UTC string
     var dateFormatter = ISO8601DateFormatter()
     
     // This is the UITableView data source
-    var tasks: [DittoDocument<[String: Any?]>] = []
-
+    var tasks: [DittoDocument] = []
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -34,7 +35,7 @@ class TasksTableViewController: UITableViewController {
     }
     
     func setupTaskList() {
-        _ = try! collection.findAll().sort("dateCreated", isAscending: true).observe { [weak self] docs, event in
+        liveQuery = try! collection.findAll().sort("dateCreated", isAscending: true).observe { [weak self] docs, event in
             guard let self = self else { return }
             switch event {
             case .initial:
@@ -79,17 +80,18 @@ class TasksTableViewController: UITableViewController {
             title: "Add New Task",
             message: nil,
             preferredStyle: .alert)
-
+        
         // Add a text field to the alert for the new task text
         alert.addTextField()
-
+        
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-
+        
         // Add a "OK" button to the alert. The handler calls addNewToDoItem()
         alert.addAction(UIAlertAction(title: "OK", style: .default) { [weak self] _ in
             guard let self = self else { return }
             if let text = alert.textFields?[0].text {
                 let dateString = self.dateFormatter.string(from: Date())
+                
                 try! self.collection.insert([
                     "text": text,
                     "dateCreated": dateString,
@@ -97,17 +99,17 @@ class TasksTableViewController: UITableViewController {
                 ])
             }
         })
-
+        
         // Present the alert to the user
         present(alert, animated: true)
     }
     
     // MARK: - Table view data source
-
+    
     override func numberOfSections(in tableView: UITableView) -> Int {
         return 1
     }
-
+    
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return tasks.count
     }
@@ -128,11 +130,11 @@ class TasksTableViewController: UITableViewController {
         
         return cell
     }
-
+    
     override func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
         true
     }
-
+    
     override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         let task = tasks[indexPath.row]
         try! collection.findByID(task._id).remove()

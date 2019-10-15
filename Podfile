@@ -6,6 +6,6 @@ target 'todo-demo-starter' do
   use_frameworks!
 
   # Pods for todo-demo-starter
-  pod 'DittoKit', '~> 0.1.5'
+  pod 'DittoKit', '~> 0.1.6'
 
 end
